@@ -11,13 +11,6 @@ import org.pircbotx.hooks.events.MessageEvent;
 
 public abstract class Module {
 
-	public Module(PircBotX b, LightBot lb) {
-		bot = b;
-	}
-
-	protected PircBotX bot;
-	protected LightBot lbot;
-
 	public abstract String getName();
 	public abstract String getVersion();
 
@@ -37,14 +30,5 @@ public abstract class Module {
 		return ownerCommands;
 	}
 
-	public abstract void interpretCommand(String command, String[] args, User user, Channel channel);
-	
-	public void respond(User u, Channel c, String message) {
-		System.out.println((u != null ? u.getNick() : "") + (c != null ? (u != null ? ", " : "") + c.getName() : "") + (u != null || c != null ? ": " : "") + message);
-		if(c != null) {
-			if(u != null) bot.sendMessage(c, u.getNick() + ": " + message);
-			else bot.sendMessage(c, message);
-		}
-		else if(u != null) bot.sendMessage(u, message);
-	}
+	public abstract void interpretCommand(String command, String[] args, User user, Channel channel, LightBot lbot, PircBotX bot);
 }

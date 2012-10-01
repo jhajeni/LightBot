@@ -65,7 +65,7 @@ public class LightBot extends ListenerAdapter {
 		loginHandler = new LoginHandler(bot);
 
 		//TODO: proper module loader
-		modules.add(new ModuleBasics(bot, this));
+		modules.add(new ModuleBasics());
 
 		for(Module m : modules) {
 			for(Command c : m.getNormalCommands()) {
@@ -114,19 +114,18 @@ public class LightBot extends ListenerAdapter {
 			String cmd = "";
 			String argsUnparsed = "";
 			
-			Pattern pattern = Pattern.compile("(.+)\\s+(.+)");
+			Pattern pattern = Pattern.compile("(.+?)\\s+(.+)");
 			Matcher matcher = pattern.matcher(unparsed);
 			if(matcher.matches()) {
 				cmd = matcher.group(1).toLowerCase();
 				argsUnparsed = matcher.group(2);
 			}
 			else {
-				pattern = Pattern.compile("(.+)\\s*");
+				pattern = Pattern.compile("(.+?)\\s*");
 				matcher = pattern.matcher(unparsed);
 				if(matcher.matches())
 					cmd = matcher.group(1).toLowerCase();
 			}
-			
 			
 			if(commandCache.containsKey(cmd)) {
 				Module m = commandCache.get(cmd);
@@ -172,11 +171,18 @@ public class LightBot extends ListenerAdapter {
 					}
 					
 					if(c.validArgs(args.length))
-						m.interpretCommand(cmd, args, event.getUser(), event.getChannel());
+						m.interpretCommand(cmd, args, event.getUser(), event.getChannel(), this, bot);
 					else
 						event.respond(cmdPrefix + c.getHelp());
 				}
 			}
 		}
+	}
+	
+	public void respond(User u, Channel c, String message) {if(c != null) {
+			if(u != null) bot.sendMessage(c, u.getNick() + ": " + message);
+			else bot.sendMessage(c, message);
+		}
+		else if(u != null) bot.sendMessage(u, message);
 	}
 }

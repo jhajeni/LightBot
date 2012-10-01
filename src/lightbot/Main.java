@@ -64,15 +64,15 @@ class BotProperties {
 	public String serverkey = "";
 
 	public String nick = "LightBot";
-	public String user = "LightBot";
-	public String userpass = "lightpass";
+	public String user = "";
+	public String userpass = "";
 
-	public String owner = "xSmallDeadGuyx";
+	public String owner = "";
 	public String[] admins = {};
 	
 	public char cmdprefix = '>';
 	
-	public String[] channels = {"#lightbot"};
+	public String[] channels = {};
 	
 	public boolean log = true;
 }

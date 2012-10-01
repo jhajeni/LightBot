@@ -11,8 +11,7 @@ import org.pircbotx.hooks.events.MessageEvent;
 
 public class ModuleBasics extends Module {
 	
-	public ModuleBasics(PircBotX b, LightBot lb) {
-		super(b, lb);
+	public ModuleBasics() {
 		normalCommands.add(new CommandArgsFixed("getadmins", "getadmins", 0));
 		normalCommands.add(new CommandArgsFixed("getowner", "getowner", 0));
 		normalCommands.add(new CommandArgsFixed("getchannels", "getchannels", 0));
@@ -36,18 +35,18 @@ public class ModuleBasics extends Module {
 	}
 	
 	@Override
-	public void interpretCommand(String command, String[] args, User user, Channel channel) {
+	public void interpretCommand(String command, String[] args, User user, Channel channel, LightBot lbot, PircBotX bot) {
 		if(command.equalsIgnoreCase("getadmins")) {
 			String admins = "";
 			for(String a : lbot.admins) admins += (admins.isEmpty() ? "" : ", ") + a;
-			respond(user, channel, admins.isEmpty() ? "No bot admins" : admins);
+			lbot.respond(user, channel, admins.isEmpty() ? "No bot admins" : admins);
 		}
 		if(command.equalsIgnoreCase("getowner"))
-			respond(user, channel, lbot.owner);
+			lbot.respond(user, channel, lbot.owner);
 		if(command.equalsIgnoreCase("getchannels")) {
 			String channels = "";
 			for(Channel c : bot.getChannels()) channels += (channels.isEmpty() ? "" : ", ") + c.getName();
-			respond(user, channel, channels);
+			lbot.respond(user, channel, channels);
 		}
 		
 		if(command.equalsIgnoreCase("join"))
@@ -60,34 +59,34 @@ public class ModuleBasics extends Module {
 						bot.partChannel(c);
 						parted = true;
 					}
-				if(!parted) respond(user, channel, "I'm not in channel " + args[0]);
+				if(!parted) lbot.respond(user, channel, "I'm not in channel " + args[0]);
 			}
 			else if(channel != null)
 				bot.partChannel(channel);
 			else
-				respond(user, channel, "No channel context to part, specify optional channel argument");
+				lbot.respond(user, channel, "No channel context to part, specify optional channel argument");
 		}
 		
 		if(command.equalsIgnoreCase("addadmin")) {
 			String login = lbot.loginHandler.getLogin(args[0]);
 			if(login != null) {
-				respond(user, channel, "Adding " + args[0] + " (" + login + ") as admin");
+				lbot.respond(user, channel, "Adding " + args[0] + " (" + login + ") as admin");
 				lbot.admins.add(login);
 			}
-			else respond(user, channel, "User " + args[0] + " not found or not logged in");
+			else lbot.respond(user, channel, "User " + args[0] + " not found or not logged in");
 		}
 		if(command.equalsIgnoreCase("deladmin")) {
 			String login = lbot.loginHandler.getLogin(args[0]);
 			if(login != null) {
 				if(lbot.admins.contains(login)) lbot.admins.remove(login);
-				else respond(user, channel, "User " + args[0] + " is not an admin");
+				else lbot.respond(user, channel, "User " + args[0] + " is not an admin");
 			}
-			else respond(user, channel, "User " + args[0] + " not found or not logged in");
+			else lbot.respond(user, channel, "User " + args[0] + " not found or not logged in");
 		}
 		if(command.equalsIgnoreCase("setowner")) {
 			String login = lbot.loginHandler.getLogin(args[0]);
 			if(login != null) lbot.owner = login;
-			else respond(user, channel, "User " + args[0] + " not found or not logged in");
+			else lbot.respond(user, channel, "User " + args[0] + " not found or not logged in");
 		}
 	}
 }
