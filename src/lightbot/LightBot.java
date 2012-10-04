@@ -1,9 +1,13 @@
 package lightbot;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +20,11 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import org.pircbotx.exception.IrcException;
 import org.pircbotx.exception.NickAlreadyInUseException;
+import org.pircbotx.hooks.Event;
 import  org.pircbotx.hooks.ListenerAdapter;
 import org.pircbotx.hooks.events.MessageEvent;
+import org.pircbotx.hooks.events.NoticeEvent;
+import org.pircbotx.hooks.events.PrivateMessageEvent;
 
 import com.google.gson.Gson;
 
@@ -36,11 +43,19 @@ public class LightBot extends ListenerAdapter {
 	private Map<String, Module> commandCache = new HashMap<String, Module>();
 	
 	public BotProperties config;
+	
+	private File logFile;
 
 	public LightBot(BotProperties props) throws Exception {
+		Calendar cl = Calendar.getInstance();
+		logFile = new File("logs" + File.separator + props.nick + "_" + props.server + "_" + cl.get(Calendar.DAY_OF_MONTH) + "-" + cl.get(Calendar.MONTH) + "_" + cl.get(Calendar.HOUR) + "-" + cl.get(Calendar.MINUTE) + ".log");
+		if(!logFile.exists()) logFile.createNewFile();
+		
+		log("-----Initializing bot-----");
 		bot = new PircBotX();
 		bot.getListenerManager().addListener(this);
 
+		log("Nick: " + props.nick);
 		bot.setName(props.nick);
 		bot.setAutoNickChange(true);
 		
@@ -48,36 +63,58 @@ public class LightBot extends ListenerAdapter {
 		
 		if(!config.server.isEmpty()) {
 			if(config.port > 0) {
-				if(!config.serverkey.isEmpty()) bot.connect(config.server, config.port, config.serverkey);
-				else bot.connect(config.server, config.port);
+				if(!config.serverkey.isEmpty()) {
+					log("Connecting to server: " + config.server + ":" + config.port + " " + config.serverkey);
+					bot.connect(config.server, config.port, config.serverkey);
+				}
+				else {
+					log("Connecting to server: " + config.server + ":" + config.port);
+					bot.connect(config.server, config.port);
+				}
 			}
-			else bot.connect(config.server);
+			else {
+				log("Connecting to server: " + config.server);
+				bot.connect(config.server);
+			}
 		}
 
 		if(!config.user.isEmpty() && !config.userpass.isEmpty()) {
+			log("Login: " + config.user + " " + config.userpass);
 			bot.setLogin(config.user);
 			bot.identify(config.userpass);
 		}
 
+		log("Command Prefix: " + config.cmdprefix);
 		cmdPrefix = config.cmdprefix;
 
+		log("Owner: " + config.owner);
 		owner = config.owner;
 		for(String admin : config.admins) admins.add(admin);
 		
-		for(String channel : config.channels)
+		String chans = "";
+		for(String channel : config.channels) {
+			chans += (chans.isEmpty() ? "" : ", ") + channel;
 			bot.joinChannel(channel);
+		}
+		log("Joined channels: " + chans);
 
 		loginHandler = new LoginHandler(bot);
 
 		//TODO: proper module loader
+		log("Loaded basic module");
 		modules.add(new ModuleBasics());
 		ModuleLoader loader = new ModuleLoader();
 		URL modulePath = LightBot.class.getResource("LightBot.class");
 		File lbotDir = new File(modulePath.getPath()).getParentFile();
 		if(lbotDir.isDirectory())
 			for(File f : lbotDir.listFiles())
-				if(f.getName().equalsIgnoreCase("modules") && f.isDirectory())
-					modules.addAll(loader.loadAllModules(f));
+				if(f.getName().equalsIgnoreCase("modules") && f.isDirectory()) {
+					List<Module> ms = loader.loadAllModules(f);
+					for(Module m : ms) {
+						log("Loading module: " + m.getName() + " (" + m.getVersion() + ")");
+						modules.add(m);
+					}
+				}
 		
 		for(Module m : modules) {
 			for(Command c : m.getNormalCommands()) {
@@ -117,11 +154,10 @@ public class LightBot extends ListenerAdapter {
 	public boolean isOwner(User user) {
 		return owner.equals(loginHandler.getLogin(user));
 	}
-
-	@Override
-	public void onMessage(MessageEvent event) {
-		if(event.getMessage() != null && event.getMessage().startsWith(Character.toString(cmdPrefix)) && event.getMessage().length() > 1) {
-			String unparsed = event.getMessage().substring(1);
+	
+	public void interpretMessage(String message, User user, Channel channel, Event event) {
+		if(message != null && message.startsWith(Character.toString(cmdPrefix)) && message.length() > 1) {
+			String unparsed = message.substring(1);
 			
 			String cmd = "";
 			String argsUnparsed = "";
@@ -148,7 +184,7 @@ public class LightBot extends ListenerAdapter {
 				if(cmds.contains(c)) {
 					c = cmds.get(cmds.indexOf(c));
 					
-					if(!isOwner(event.getUser())) {
+					if(!isOwner(user)) {
 						event.respond("You must be the bot owner to perform command '" + cmd + "'");
 						return;
 					}
@@ -158,7 +194,7 @@ public class LightBot extends ListenerAdapter {
 					if(cmds.contains(c)) {
 						c = cmds.get(cmds.indexOf(c));
 						
-						if(!isAdmin(event.getUser())) {
+						if(!isAdmin(user)) {
 							event.respond("You must have admin privileges to perform command '" + cmd + "'");
 							return;
 						}
@@ -183,12 +219,27 @@ public class LightBot extends ListenerAdapter {
 					}
 					
 					if(c.validArgs(args.length))
-						m.interpretCommand(cmd, args, event.getUser(), event.getChannel(), this, bot, argsUnparsed);
+						m.interpretCommand(cmd, args, user, channel, this, bot, argsUnparsed);
 					else
 						event.respond(cmdPrefix + c.getHelp());
 				}
 			}
 		}
+	}
+
+	@Override
+	public void onPrivateMessage(PrivateMessageEvent event) {
+		interpretMessage(event.getMessage(), event.getUser(), null, event);
+	}
+	
+	@Override
+	public void onMessage(MessageEvent event) {
+		interpretMessage(event.getMessage(), event.getUser(), event.getChannel(), event);
+	}
+	
+	@Override
+	public void onNotice(NoticeEvent event) {
+		interpretMessage(event.getMessage(), event.getUser(), event.getChannel(), event);
 	}
 	
 	public void respond(User user, Channel channel, String message) {
@@ -212,5 +263,18 @@ public class LightBot extends ListenerAdapter {
 		config.user = bot.getLogin();
 		config.userpass = bot.getPassword();
 		if(save) Main.saveConfig();
+	}
+	
+	public void log(String message) {
+		BufferedWriter writer;
+		try {
+			writer = new BufferedWriter(new FileWriter(logFile, true));
+			writer.append(message);
+			writer.newLine();
+			writer.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

@@ -101,8 +101,7 @@ public class ModuleBasics extends Module {
 			}
 			else lbot.respond(user, channel, "User " + args[0] + " not found or not logged in");
 		}
-		if(command.equalsIgnoreCase("saveconfig")) {
+		if(command.equalsIgnoreCase("saveconfig"))
 			lbot.updateConfig(true);
-		}
 	}
 }

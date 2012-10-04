@@ -30,10 +30,17 @@ public class Main {
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
+		System.out.println("-----Lightbot by SmallDeadGuy-----");
+		File file = new File("logs");
+		if(!file.exists() || !file.isDirectory())
+			file.mkdir();
+		
+		System.out.println("Loading config.json");
 		Gson gson = new Gson();
 		File config = new File("config.json");
 		String json = "";
 		if(config.exists()) {
+			System.out.println("Config found, reading json");
 			BufferedReader reader = new BufferedReader(new FileReader(config));
 			String line = "";
 			while((line = reader.readLine()) != null)
@@ -42,11 +49,13 @@ public class Main {
 			
 			BotProperties[] bots = gson.fromJson(json, BotProperties[].class);
 			for(BotProperties bot : bots) {
+				System.out.println("Creating bot " + bot.nick + " on server " + bot.server);
 				LightBot lbot = new LightBot(bot);
 				lbots.add(lbot);
 			}
 		}
 		else {
+			System.out.println("No config found, using default");
 			BotProperties bot = new BotProperties();
 			LightBot lbot = new LightBot(bot);
 			lbots.add(lbot);
@@ -59,6 +68,7 @@ public class Main {
 	}
 	
 	public static void saveConfig() {
+		System.out.println("Saving updated config");
 		Gson gson = new Gson();
 		List<BotProperties> props = new ArrayList<BotProperties>();
 		for(LightBot lbot : lbots)

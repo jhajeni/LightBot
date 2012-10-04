@@ -26,7 +26,6 @@ public class ModuleLoader {
 							Class c = loader.loadClass("lightbot.modules." + f.getName().replaceAll("\\" + file.separator, ".").replaceFirst("\\.[Cc][Ll][Aa][Ss][Ss]$", ""));
 							Module m = (Module) c.newInstance();
 							modules.add(m);
-							System.out.println("Loaded module: " + m.getName() + " (" + m.getVersion() + ")");
 						}
 						catch (ClassNotFoundException e) {
 							e.printStackTrace();
