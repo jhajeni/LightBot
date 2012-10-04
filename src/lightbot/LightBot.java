@@ -1,6 +1,8 @@
 package lightbot;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,21 +19,23 @@ import org.pircbotx.exception.NickAlreadyInUseException;
 import  org.pircbotx.hooks.ListenerAdapter;
 import org.pircbotx.hooks.events.MessageEvent;
 
+import com.google.gson.Gson;
+
 public class LightBot extends ListenerAdapter {
-	
-	private boolean log;
 	
 	public String owner;
 	public List<String> admins = new ArrayList<String>();
 
 	private PircBotX bot;
 
-	private char cmdPrefix;
+	public char cmdPrefix;
 
 	public LoginHandler loginHandler;
 
-	private List<Module> modules = new ArrayList<Module>();
+	public List<Module> modules = new ArrayList<Module>();
 	private Map<String, Module> commandCache = new HashMap<String, Module>();
+	
+	public BotProperties config;
 
 	public LightBot(BotProperties props) throws Exception {
 		bot = new PircBotX();
@@ -40,33 +44,41 @@ public class LightBot extends ListenerAdapter {
 		bot.setName(props.nick);
 		bot.setAutoNickChange(true);
 		
-		if(!props.server.isEmpty()) {
-			if(props.port > 0) {
-				if(!props.serverkey.isEmpty()) bot.connect(props.server, props.port, props.serverkey);
-				else bot.connect(props.server, props.port);
-			}
-			else bot.connect(props.server);
-		}
-
-		if(!props.user.isEmpty() && !props.userpass.isEmpty()) {
-			bot.setLogin(props.user);
-			bot.identify(props.userpass);
-		}
-
-		cmdPrefix = props.cmdprefix;
-		log = props.log;
-
-		owner = props.owner;
-		for(String admin : props.admins) admins.add(admin);
+		config = props;
 		
-		for(String channel : props.channels)
+		if(!config.server.isEmpty()) {
+			if(config.port > 0) {
+				if(!config.serverkey.isEmpty()) bot.connect(config.server, config.port, config.serverkey);
+				else bot.connect(config.server, config.port);
+			}
+			else bot.connect(config.server);
+		}
+
+		if(!config.user.isEmpty() && !config.userpass.isEmpty()) {
+			bot.setLogin(config.user);
+			bot.identify(config.userpass);
+		}
+
+		cmdPrefix = config.cmdprefix;
+
+		owner = config.owner;
+		for(String admin : config.admins) admins.add(admin);
+		
+		for(String channel : config.channels)
 			bot.joinChannel(channel);
 
 		loginHandler = new LoginHandler(bot);
 
 		//TODO: proper module loader
 		modules.add(new ModuleBasics());
-
+		ModuleLoader loader = new ModuleLoader();
+		URL modulePath = LightBot.class.getResource("LightBot.class");
+		File lbotDir = new File(modulePath.getPath()).getParentFile();
+		if(lbotDir.isDirectory())
+			for(File f : lbotDir.listFiles())
+				if(f.getName().equalsIgnoreCase("modules") && f.isDirectory())
+					modules.addAll(loader.loadAllModules(f));
+		
 		for(Module m : modules) {
 			for(Command c : m.getNormalCommands()) {
 				if(c == null) continue;
@@ -171,7 +183,7 @@ public class LightBot extends ListenerAdapter {
 					}
 					
 					if(c.validArgs(args.length))
-						m.interpretCommand(cmd, args, event.getUser(), event.getChannel(), this, bot);
+						m.interpretCommand(cmd, args, event.getUser(), event.getChannel(), this, bot, argsUnparsed);
 					else
 						event.respond(cmdPrefix + c.getHelp());
 				}
@@ -179,10 +191,26 @@ public class LightBot extends ListenerAdapter {
 		}
 	}
 	
-	public void respond(User u, Channel c, String message) {if(c != null) {
-			if(u != null) bot.sendMessage(c, u.getNick() + ": " + message);
-			else bot.sendMessage(c, message);
-		}
-		else if(u != null) bot.sendMessage(u, message);
+	public void respond(User user, Channel channel, String message) {
+		if(channel != null) bot.sendMessage(channel, message);
+		else if(user != null) bot.sendMessage(user, message);
+	}
+	
+	public void action(User user, Channel channel, String action) {
+		if(channel != null) bot.sendAction(channel, action);
+		else if(user != null) bot.sendAction(user, action);
+	}
+	
+	public void updateConfig(boolean save) {
+		config.admins = admins.toArray(new String[0]);
+		List<String> channels = new ArrayList<String>();
+		for(Channel c : bot.getChannels()) channels.add(c.getName());
+		config.channels = channels.toArray(new String[0]);
+		config.cmdprefix = cmdPrefix;
+		config.nick = bot.getNick();
+		config.owner = owner;
+		config.user = bot.getLogin();
+		config.userpass = bot.getPassword();
+		if(save) Main.saveConfig();
 	}
 }

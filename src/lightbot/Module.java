@@ -30,5 +30,5 @@ public abstract class Module {
 		return ownerCommands;
 	}
 
-	public abstract void interpretCommand(String command, String[] args, User user, Channel channel, LightBot lbot, PircBotX bot);
+	public abstract void interpretCommand(String command, String[] args, User user, Channel channel, LightBot lbot, PircBotX bot, String argsUnparsed);
 }

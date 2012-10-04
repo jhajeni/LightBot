@@ -35,7 +35,7 @@ public class ModuleBasics extends Module {
 	}
 	
 	@Override
-	public void interpretCommand(String command, String[] args, User user, Channel channel, LightBot lbot, PircBotX bot) {
+	public void interpretCommand(String command, String[] args, User user, Channel channel, LightBot lbot, PircBotX bot, String argsUnparsed) {
 		if(command.equalsIgnoreCase("getadmins")) {
 			String admins = "";
 			for(String a : lbot.admins) admins += (admins.isEmpty() ? "" : ", ") + a;
@@ -49,20 +49,26 @@ public class ModuleBasics extends Module {
 			lbot.respond(user, channel, channels);
 		}
 		
-		if(command.equalsIgnoreCase("join"))
+		if(command.equalsIgnoreCase("join")) {
 			bot.joinChannel(args[0]);
+			lbot.updateConfig(true);
+		}
 		if(command.equalsIgnoreCase("part")) {
 			if(args.length == 1) {
 				boolean parted = false;
 				for(Channel c : bot.getChannels())
 					if(c.getName().equalsIgnoreCase(args[0])) {
 						bot.partChannel(c);
+						lbot.updateConfig(true);
 						parted = true;
+						break;
 					}
 				if(!parted) lbot.respond(user, channel, "I'm not in channel " + args[0]);
 			}
-			else if(channel != null)
+			else if(channel != null) {
 				bot.partChannel(channel);
+				lbot.updateConfig(true);
+			}
 			else
 				lbot.respond(user, channel, "No channel context to part, specify optional channel argument");
 		}
@@ -72,21 +78,31 @@ public class ModuleBasics extends Module {
 			if(login != null) {
 				lbot.respond(user, channel, "Adding " + args[0] + " (" + login + ") as admin");
 				lbot.admins.add(login);
+				lbot.updateConfig(true);
 			}
 			else lbot.respond(user, channel, "User " + args[0] + " not found or not logged in");
 		}
 		if(command.equalsIgnoreCase("deladmin")) {
 			String login = lbot.loginHandler.getLogin(args[0]);
 			if(login != null) {
-				if(lbot.admins.contains(login)) lbot.admins.remove(login);
+				if(lbot.admins.contains(login)) {
+					lbot.admins.remove(login);
+					lbot.updateConfig(true);
+				}
 				else lbot.respond(user, channel, "User " + args[0] + " is not an admin");
 			}
 			else lbot.respond(user, channel, "User " + args[0] + " not found or not logged in");
 		}
 		if(command.equalsIgnoreCase("setowner")) {
 			String login = lbot.loginHandler.getLogin(args[0]);
-			if(login != null) lbot.owner = login;
+			if(login != null) {
+				lbot.owner = login;
+				lbot.updateConfig(true);
+			}
 			else lbot.respond(user, channel, "User " + args[0] + " not found or not logged in");
+		}
+		if(command.equalsIgnoreCase("saveconfig")) {
+			lbot.updateConfig(true);
 		}
 	}
 }

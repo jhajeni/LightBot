@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -56,6 +57,26 @@ public class Main {
 			writer.close();
 		}
 	}
+	
+	public static void saveConfig() {
+		Gson gson = new Gson();
+		List<BotProperties> props = new ArrayList<BotProperties>();
+		for(LightBot lbot : lbots)
+			props.add(lbot.config);
+		String json = gson.toJson(props.toArray(new BotProperties[0]), BotProperties[].class);
+		
+		File config = new File("config.json");
+		FileWriter writer;
+		
+		try {
+			writer = new FileWriter(config);
+			writer.write(json);
+			writer.close();
+		}
+		catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
 }
 
 class BotProperties {
@@ -73,6 +94,4 @@ class BotProperties {
 	public char cmdprefix = '>';
 	
 	public String[] channels = {};
-	
-	public boolean log = true;
 }
